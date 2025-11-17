@@ -1,149 +1,198 @@
-# FinBuddy --- Technical README
+# FinBuddy — Technical README
 
 ## Overview
 
-FinBuddy is a multi-agent LLM-powered financial analysis system designed
-to transform raw transaction CSV files into categorized data, insights,
-recommendations, and a structured financial report.
+FinBuddy is a modular, multi-agent, LLM-powered financial analysis system
+designed to transform raw banking transaction CSV files into categorized data,
+behavioral insights, personalized recommendations, and a structured financial report.
+
+The system supports **hybrid LLM execution**:
+- **OpenAI GPT-4.1 / GPT-4.1-mini** (cloud)
+- **LM Studio local models (e.g., gpt2-smashed)** as automatic fallback
+
+This ensures FinBuddy runs even when offline, rate-limited, or developing locally.
+
+---
 
 ## Architecture
 
-FinBuddy is built using a modular multi-agent architecture:
+FinBuddy uses a clean, extensible multi-agent architecture:
 
-### Agents
+### **Agents**
+- **CategorizerAgent** – Classifies each transaction into spending categories.
+- **InsightsAgent** – Detects patterns, anomalies, monthly trends, and spending behaviors.
+- **RecommenderAgent** – Generates personalized financial advice.
+- **ReporterAgent** – Produces the final structured financial summary & report.
 
--   **CategorizerAgent**: Performs transaction classification.
--   **InsightsAgent**: Detects trends, anomalies, and spending patterns.
--   **RecommenderAgent**: Generates personalized financial guidance.
--   **ReporterAgent**: Produces structured financial summaries.
+### **System Components**
+- **Orchestrator** – Controls the pipeline flow between agents.
+- **CSV Tool** – Ingests, validates, cleans, and preprocesses CSV files.
+- **Session Manager** – Tracks state within a single run.
+- **MemoryBank** – Cross-run persistent memory for long-term learning.
+- **Hybrid LLM Client** – Routes prompts to OpenAI or LM Studio based on availability.
 
-### System Components
+---
 
--   **Orchestrator**: Coordinates the agent pipeline.
--   **CSV Tool**: Handles ingestion, cleaning, and preprocessing.
--   **Session Manager**: Maintains per-run session state.
--   **MemoryBank**: Stores long-term behaviors across runs.
+## Hybrid LLM Execution
 
-## Tech Stack
+FinBuddy includes a **HybridClient** that automatically chooses the LLM backend:
 
--   **LLMs**: OpenAI GPT-4.1 & GPT-4.1-mini
--   **Python 3.10+**
--   **Modular agent pipeline**
--   **Observability**: Logging and tracing throughout execution
+### Priority Order
+1. **OpenAI (cloud)**  
+2. **LM Studio local API**  
+   - Example endpoint:  
+     `http://192.168.50.230:1234/v1`
+   - Example model:  
+     `"gpt2-smashed"`
 
-## Installation
+### LM Studio Python Integration
 
-``` bash
-git clone <your-repo-url>
-cd finbuddy
-pip install -r requirements.txt
-```
+FinBuddy uses the OpenAI Python client to communicate with LM Studio:
 
-## Usage
+```python
+import openai
 
-Run the full pipeline:
+openai.api_base = "http://192.168.50.230:1234/v1"
+openai.api_key = "not-needed"
 
-``` bash
-python main.py data/sample_transactions.csv
-```
+response = openai.ChatCompletion.create(
+    model="gpt2-smashed",
+    messages=[{"role": "user", "content": "Hello from FinBuddy"}]
+)
 
-Pipeline steps: 1. Load & clean CSV 2. Classify transactions 3. Extract
-behavioral insights 4. Generate recommendations 5. Produce structured
-financial report
+print(response.choices[0].message.content)
+````
 
-## File Structure
+### Special Behavior
+The system stops automatically if LM Studio returns the placeholder text:
 
-    finbuddy/
-    │
-    ├── agents/
-    │   ├── categorizer.py
-    │   ├── insights.py
-    │   ├── recommender.py
-    │   └── reporter.py
-    │
-    ├── tools/
-    │   ├── csv_tool.py
-    │   └── memory.py
-    │
-    ├── core/
-    │   ├── orchestrator.py
-    │   └── session_manager.py
-    │
-    ├── data/
-    ├── main.py
-    └── README.md
+_Returning 200 anyway_
 
-##Architucture
-High Level Arch
+The system also stops after two consecutive failed runs from any agent.
+
+All agents include progress bars and verbose print statements for full visibility into the pipeline.
+
+
+FinBuddy — Multi-Agent Financial Intelligence System
+
+
+
+
+
+
+
+
+
+
+FinBuddy is a multi-agent, modular, LLM-powered financial analysis system that transforms raw banking transactions into:
+
+Clean categorized data
+
+Spending pattern insights
+
+Personalized recommendations
+
+A structured financial report
+
+The system is designed for reliability, extensibility, and offline-friendly execution using a hybrid OpenAI + LM Studio model fallback system.
+
+🚀 Features
+🧠 Multi-Agent Architecture
+
+FinBuddy uses four coordinated LLM agents:
+
+CategorizerAgent — Cleans and classifies transaction descriptions
+
+InsightsAgent — Detects anomalies & spending trends
+
+RecommenderAgent — Generates personalized financial advice
+
+ReporterAgent — Produces the final structured report
+
+🔁 Hybrid Cloud + Local LLM Execution
+
+If OpenAI quota fails → automatically falls back to LM Studio
+(local model: gpt2-smashed)
+
+🧩 Tooling & Observability
+
+Detailed console logs
+
+Per-agent progress bars
+
+Fail-fast logic (stops after 2 consecutive failures)
+
+LM Studio “Returning 200 anyway” detection
+
+💾 Session & Memory
+
+Session logs for each run
+
+Long-term MemoryBank comparing behaviors across sessions
+
+🏗️ System Architecture
+High-Level Agent Pipeline
                     ┌───────────────────────────┐
                     │      User's CSV File      │
                     └─────────────┬─────────────┘
                                   │
                                   ▼
                          ┌────────────────┐
-                         │   CSV Tool     │
-                         │ (tools/csv...) │
+                         │    CSV Tool    │
                          └───────┬────────┘
-                                 │  Raw DataFrame
+                                 │ Raw DataFrame
                                  ▼
-                     ┌───────────────────────────┐
-                     │    Categorizer Agent      │
-                     │ agents/categorizer_agent  │
-                     └─────────────┬─────────────┘
+                     ┌────────────────────────────┐
+                     │      Categorizer Agent     │
+                     └─────────────┬──────────────┘
                                    │ Categorized DF
                                    ▼
-                     ┌───────────────────────────┐
-                     │      Insights Agent       │
-                     │ agents/insights_agent     │
-                     │  + MemoryBank (core/)     │
-                     └─────────────┬─────────────┘
+                     ┌────────────────────────────┐
+                     │       Insights Agent       │
+                     │     + MemoryBank           │
+                     └─────────────┬──────────────┘
                                    │ Insights
                                    ▼
-                     ┌───────────────────────────┐
-                     │   Recommender Agent       │
-                     │ agents/recommender_agent  │
-                     └─────────────┬─────────────┘
+                     ┌────────────────────────────┐
+                     │     Recommender Agent      │
+                     └─────────────┬──────────────┘
                                    │ Recommendations
                                    ▼
-                     ┌───────────────────────────┐
-                     │      Reporter Agent       │
-                     │ agents/reporter_agent     │
-                     └─────────────┬─────────────┘
+                     ┌────────────────────────────┐
+                     │       Reporter Agent        │
+                     └─────────────┬──────────────┘
                                    │ Final Report
                                    ▼
                            ┌─────────────────┐
                            │    CLI Output    │
-                           │    (main.py)     │
                            └─────────────────┘
+| Component     | Technology                                        |
+| ------------- | ------------------------------------------------- |
+| LLMs          | OpenAI GPT-4.1 / GPT-4.1-mini / LM Studio (local) |
+| Language      | Python 3.10+                                      |
+| Libraries     | pandas, tqdm, python-dotenv, requests, openai     |
+| Architecture  | Multi-agent orchestrated pipeline                 |
+| Observability | Logging, progress bars, verbose tracing           |
 
-       ┌────────────────────────────────────────────────────────────┐
-       │           Session (core/agent_session.py)                  │
-       └────────────────────────────────────────────────────────────┘
+📦 Installation
 
-       ┌────────────────────────────────────────────────────────────┐
-       │           MemoryBank (core/memory_bank.py)                 │
-       └────────────────────────────────────────────────────────────┘
 
-## Extending the System
 
-### Adding a new agent
 
-1.  Create a file in `agents/`
-2.  Implement standardized agent interface
-3.  Register agent in Orchestrator
 
-### Adding new tools
 
--   Follow existing conventions in `tools/`
--   Ensure tool is injectable into agents
 
-## Logging & Debugging
 
--   Central logging system tracks:
-    -   Inputs/outputs of each agent
-    -   Pipeline execution timing
-    -   Memory usage and updates
 
-## License
 
-MIT License (customize as needed)
+
+
+
+
+
+
+
+
+
+
+
