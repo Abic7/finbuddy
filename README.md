@@ -1,18 +1,193 @@
-# FinBuddy — Technical README
+FinBuddy — Technical README
+Overview
 
-## Overview
+FinBuddy is a modular, multi-agent, LLM-powered financial analysis system designed to transform raw transaction CSV files into:
 
-FinBuddy is a modular, multi-agent, LLM-powered financial analysis system
-designed to transform raw banking transaction CSV files into categorized data,
-behavioral insights, personalized recommendations, and a structured financial report.
+✔ Categorized financial data
+✔ Behavioral insights
+✔ Personalized recommendations
+✔ A structured final financial report
 
-The system supports **hybrid LLM execution**:
-- **OpenAI GPT-4.1 / GPT-4.1-mini** (cloud)
-- **LM Studio local models (e.g., gpt2-smashed)** as automatic fallback
+FinBuddy can run using OpenAI cloud models, but also supports a hybrid fallback system using LM Studio local models when OpenAI quota is exceeded — ensuring the pipeline never breaks.
 
-This ensures FinBuddy runs even when offline, rate-limited, or developing locally.
+Architecture
 
----
+FinBuddy uses a multi-agent pipeline.
+Each agent performs one stage of the financial analysis:
+
+Agents
+1. CategorizerAgent
+Classifies transactions using an LLM (cloud or local).
+Handles ambiguous or messy descriptions.
+Adds "Category" column to your dataframe.
+
+2. InsightsAgent
+Detects patterns in spending.
+Spots anomalies.
+Summarizes financial behavior.
+Uses MemoryBank to compare across runs.
+
+3. RecommenderAgent
+Generates personalized financial advice.
+Uses insight summaries to guide output.
+
+4. ReporterAgent
+Produces final structured financial report.
+Clean, readable, and formatted for CLI users.
+
+System Components
+Orchestrator
+Coordinates the entire agent pipeline execution.
+
+CSV Tool
+Handles file parsing, cleaning, and preprocessing.
+
+Session Manager
+Tracks logs, run-specific state, timestamps, and debugging output.
+
+MemoryBank
+Stores historical behavior across multiple executions.
+
+Hybrid LLM Client (OpenAI + LM Studio)
+FinBuddy includes a custom hybrid model loader:
+
+Try OpenAI first
+If quota errors → fallback to LM Studio automatically
+
+LM Studio uses:
+http://192.168.50.230:1234/v1
+Uses OpenAI-compatible ChatCompletion API
+
+LM Studio fallback is only used if:
+OpenAI responds with insufficient_quota
+OR network errors occur
+OR LM Studio gives invalid output such as "Returning 200 anyway"
+
+Tech Stack
+Python 3.10+
+OpenAI GPT-4.1 / GPT-4.1-mini
+LM Studio (local model: gpt2-smashed)
+Pandas
+Modular agent pipeline
+Progress bars and detailed print states
+Observability: full verbose logging
+
+Installation
+git clone <your-repo-url>
+cd finbuddy_agents
+pip install -r requirements.txt
+
+Create your .env file:
+OPENAI_API_KEY="YOUR_KEY"
+Name must be exactly .env
+
+Usage
+Process a transaction CSV:
+python main.py data/sample_transactions.csv
+
+Pipeline stages:
+Load CSV
+Categorize transactions
+Generate insights
+Produce recommendations
+Create final report
+
+File Structure
+finbuddy_agents/
+│
+├── agents/
+│   ├── categorizer_agent.py
+│   ├── insights_agent.py
+│   ├── recommender_agent.py
+│   └── reporter_agent.py
+│
+├── tools/
+│   ├── csv_tool.py
+│   └── hybrid_llm_client.py
+│
+├── core/
+│   ├── agent_orchestrator.py
+│   ├── agent_session.py
+│   ├── memory_bank.py
+│
+├── data/
+│   └── sample_transactions.csv
+│
+├── main.py
+└── README.md
+
+Architecture Diagram
+High-Level Pipeline
+                    ┌───────────────────────────┐
+                    │      User's CSV File      │
+                    └─────────────┬─────────────┘
+                                  │
+                                  ▼
+                         ┌────────────────┐
+                         │   CSV Tool     │
+                         │ (tools/csv...) │
+                         └───────┬────────┘
+                                 │ Raw DataFrame
+                                 ▼
+                     ┌───────────────────────────┐
+                     │    Categorizer Agent      │
+                     │ agents/categorizer_agent  │
+                     └─────────────┬─────────────┘
+                                   │ Categorized DF
+                                   ▼
+                     ┌───────────────────────────┐
+                     │      Insights Agent       │
+                     │ agents/insights_agent     │
+                     │  + MemoryBank (core/)     │
+                     └─────────────┬─────────────┘
+                                   │ Insights
+                                   ▼
+                     ┌───────────────────────────┐
+                     │   Recommender Agent       │
+                     │ agents/recommender_agent  │
+                     └─────────────┬─────────────┘
+                                   │ Recommendations
+                                   ▼
+                     ┌───────────────────────────┐
+                     │      Reporter Agent       │
+                     │ agents/reporter_agent     │
+                     └─────────────┬─────────────┘
+                                   │ Final Report
+                                   ▼
+                           ┌─────────────────┐
+                           │    CLI Output    │
+                           │    (main.py)     │
+                           └─────────────────┘
+
+       ┌────────────────────────────────────────────────────────────┐
+       │           Session (core/agent_session.py)                  │
+       └────────────────────────────────────────────────────────────┘
+
+       ┌────────────────────────────────────────────────────────────┐
+       │           MemoryBank (core/memory_bank.py)                 │
+       └────────────────────────────────────────────────────────────┘
+
+Extending the System
+Add a new Agent
+   Create file under agents/
+   Follow the same run(self, df, session) interface
+   Register inside agent_orchestrator.py
+Add new Tools
+   Create inside tools/
+   Make sure they're injectable and modular
+
+Logging & Debugging
+   FinBuddy logs:
+      Agent start/end
+      API fallback status
+      Session steps
+      Progress bars
+      LM Studio raw responses
+      Stops execution if:
+         2 consecutive failures occur
+         LM Studio returns "Returning 200 anyway"
+      This makes debugging extremely transparent.
+      
 
 ## Architecture
 
