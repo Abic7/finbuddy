@@ -73,6 +73,57 @@ financial report
     ├── main.py
     └── README.md
 
+##Architucture
+High Level Arch
+                    ┌───────────────────────────┐
+                    │      User's CSV File      │
+                    └─────────────┬─────────────┘
+                                  │
+                                  ▼
+                         ┌────────────────┐
+                         │   CSV Tool     │
+                         │ (tools/csv...) │
+                         └───────┬────────┘
+                                 │  Raw DataFrame
+                                 ▼
+                     ┌───────────────────────────┐
+                     │    Categorizer Agent      │
+                     │ agents/categorizer_agent  │
+                     └─────────────┬─────────────┘
+                                   │ Categorized DF
+                                   ▼
+                     ┌───────────────────────────┐
+                     │      Insights Agent       │
+                     │ agents/insights_agent     │
+                     │  + MemoryBank (core/)     │
+                     └─────────────┬─────────────┘
+                                   │ Insights
+                                   ▼
+                     ┌───────────────────────────┐
+                     │   Recommender Agent       │
+                     │ agents/recommender_agent  │
+                     └─────────────┬─────────────┘
+                                   │ Recommendations
+                                   ▼
+                     ┌───────────────────────────┐
+                     │      Reporter Agent       │
+                     │ agents/reporter_agent     │
+                     └─────────────┬─────────────┘
+                                   │ Final Report
+                                   ▼
+                           ┌─────────────────┐
+                           │    CLI Output    │
+                           │    (main.py)     │
+                           └─────────────────┘
+
+       ┌────────────────────────────────────────────────────────────┐
+       │           Session (core/agent_session.py)                  │
+       └────────────────────────────────────────────────────────────┘
+
+       ┌────────────────────────────────────────────────────────────┐
+       │           MemoryBank (core/memory_bank.py)                 │
+       └────────────────────────────────────────────────────────────┘
+
 ## Extending the System
 
 ### Adding a new agent
